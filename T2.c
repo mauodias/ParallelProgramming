@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-//#include "mpi.h"
+#include "mpi.h"
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE 40      // trabalho final com o valores 10.000, 100.000, 1.000.000
