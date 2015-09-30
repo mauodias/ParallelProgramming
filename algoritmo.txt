@@ -1,14 +1,20 @@
 inicializa tamanho da fatia padrão
 aponta para posição inicial do vetor
+inicializa vetor auxiliar
 
 se não for raiz:
     recebo posição inicial do vetor do pai
     recebo tamanho da fatia
 se tamanho da fatia for maior que o delta:
     divido tamanho da fatia por dois
-    filho da esquerda é igual ao meu número mais 1
-    filho da direita é igual ao meu número mais 2
+    filho da esquerda é igual a duas vezes o meu número mais 1
+    filho da direita é igual a duas vezes o meu número mais 2
     envia para o filho da esquerda a posição do vetor
     envia para o filho da esquerda o novo tamanho da fatia
     envia para o filho da direita a posição do vetor mais o novo tamanho da fatia
     envia para o filho da direita o novo tamanho da fatia
+    recebe do filho da esquerda e salva no começo de um vetor auxiliar
+    recebe do filho da direita e salva no começo de um vetor auxiliar mais o tamanho da fatia
+    intercala o vetor auxiliar e salva no vetor original
+ordena o vetor a partir da posição inicial até o tamanho da fatia
+envia para o vetor resultante da intercalação para o pai
