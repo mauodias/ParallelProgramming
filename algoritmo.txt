@@ -1,0 +1,14 @@
+inicializa tamanho da fatia padrão
+aponta para posição inicial do vetor
+
+se não for raiz:
+    recebo posição inicial do vetor do pai
+    recebo tamanho da fatia
+se tamanho da fatia for maior que o delta:
+    divido tamanho da fatia por dois
+    filho da esquerda é igual ao meu número mais 1
+    filho da direita é igual ao meu número mais 2
+    envia para o filho da esquerda a posição do vetor
+    envia para o filho da esquerda o novo tamanho da fatia
+    envia para o filho da direita a posição do vetor mais o novo tamanho da fatia
+    envia para o filho da direita o novo tamanho da fatia
