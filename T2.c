@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include "mpi.h"
 
@@ -6,16 +7,27 @@
 #define ARRAY_SIZE 40      // trabalho final com o valores 10.000, 100.000, 1.000.000
 #endif
 
-#define LENGTH_TAG 1
-#define ARRAY_TAG 2
-#define SORTED_TAG 3
+#define ARRAY_TAG 1
+#define SORTED_TAG 2
 
 #ifndef DELTA
 #define DELTA 10
 #endif
 
-int array[ARRAY_SIZE];
-int aux_array[ARRAY_SIZE];
+int* array;
+int* aux_array;
+
+void init_vector(int rank)
+{
+    int i;
+    for (i = 0; i < ARRAY_SIZE; ++i)
+    {
+        if (!rank)
+            array[i] = ARRAY_SIZE - i;
+        else
+            array[i] = 0;
+    }
+}
 
 void bs(int n, int * vetor)
 {
@@ -57,86 +69,78 @@ int *interleaving(int vetor[], int tam)
     return vetor_auxiliar;
 }
 
-void init_vector()
-{
-	int i;
-    for (i = 0; i < ARRAY_SIZE; ++i)
-    {
-        array[i] = ARRAY_SIZE - i;
-    }
-}
-
 int main(int argc, char** argv)
 {
-    int my_rank;  /* Identificador do processo */
-    int proc_n;   /* Número de processos */
+    int my_rank;
+    int proc_n;
     int current_length = ARRAY_SIZE;
     int array_pos = 0;
     int parent;
 
-    init_vector(); // Inicializa vetor principal em ordem decrescente
-
-    MPI_Status status; /* Status de retorno */
-    MPI_Init (&argc , & argv);
+    MPI_Status status;
+    MPI_Init (&argc, & argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &proc_n);
 
-    if (my_rank != 0) // Se o nodo atual não for raiz
+    init_vector(my_rank);
+
+    // Define left and right children
+    int left_child = my_rank * 2 + 1;
+    int right_child = my_rank * 2 + 2;
+
+    printf("%d", my_rank);
+
+    if (my_rank != 0)
     {
-        if (my_rank % 2 == 1) 
+        // Get parent rank
+        if (my_rank % 2)
             parent = (my_rank - 1) / 2;
         else
             parent = (my_rank - 2) / 2;
-#ifdef DEBUG
-        printf("Current Length before: %d on %d\n",my_rank, current_length);
-#endif
-        MPI_Recv(&array_pos, 1, MPI_INT, parent, ARRAY_TAG, MPI_COMM_WORLD, &status); // Recebe a posição inicial do array
-        MPI_Recv(&current_length, 1, MPI_INT, parent, LENGTH_TAG, MPI_COMM_WORLD, &status); // Recebe o tamanho do array
-#ifdef DEBUG
-        printf("Current Length after: %d\n",current_length);
-#endif
+
+        MPI_Recv (&array, ARRAY_SIZE, MPI_INT, parent, ARRAY_TAG, MPI_COMM_WORLD, &status);
+        MPI_Get_count(&status, MPI_INT, &current_length);
     }
-    if (current_length > DELTA) // Se o tamanho recebido for maior que o delta
+    else
     {
-        current_length /= 2;
-        int left_child = my_rank * 2 + 1;
-        int array_left = array_pos;
-        int array_right = array_pos+current_length;
-        int right_child = my_rank * 2 + 2;
-#ifdef DEBUG
-        printf("%d %d %d %d %d %d %d\n", my_rank, parent, left_child, right_child, current_length, array_left, array_right);
-#endif
-        MPI_Send(&array_left, 1, MPI_INT, left_child, ARRAY_TAG, MPI_COMM_WORLD); // Envia a posição inicial para o primeiro filho
-        MPI_Send(&current_length, 1, MPI_INT, left_child, LENGTH_TAG, MPI_COMM_WORLD); // Envia a metade do tamanho para o primeiro filho
-        MPI_Send(&array_right, 1, MPI_INT, right_child, ARRAY_TAG, MPI_COMM_WORLD); // Envia a posição inicial mais o tamanho para o segundo filho (metade do array)
-        MPI_Send(&current_length, 1, MPI_INT, right_child, LENGTH_TAG, MPI_COMM_WORLD); // Envia a metade do tamanho para o primeiro filho
-        MPI_Recv(&aux_array[array_left], current_length, MPI_INT, left_child, SORTED_TAG, MPI_COMM_WORLD, &status); // Recebe o array ordenado do primeiro filho e armazena no começo do auxiliar
-        MPI_Recv(&aux_array[array_right], current_length, MPI_INT, right_child, SORTED_TAG, MPI_COMM_WORLD, &status); // Recebe o array ordenado do segundo filho e armazena no final do auxiliar
-        int *other_aux;
-        other_aux = interleaving(&aux_array[array_pos], current_length*2);
-#ifdef DEBUG
-        /*
-        printf("array %d:\n", my_rank);
         int i;
-        for (i = 0; i < ARRAY_SIZE; ++i) {
-            printf("[%d: %d ] ", i,array[i]);
-        }
+        for (i = 0; i < ARRAY_SIZE; ++i)
+            printf("%d ", array[i]);
         printf("\n");
-        printf("other_aux %d:\n", my_rank);
-        for (i = 0; i < current_length * 2; ++i) {
-            printf("[%d: %d ] ", i,other_aux[i]);
-        }
-        printf("\n");
-        */
-#endif
+    }
+    if (current_length > DELTA)
+    {
+        // Send
+        MPI_Send (&array, current_length / 2, MPI_INT, left_child, ARRAY_TAG, MPI_COMM_WORLD);
+        MPI_Send (&array[current_length / 2], current_length / 2, MPI_INT, right_child, ARRAY_TAG, MPI_COMM_WORLD);
+
+        // Recv
+        MPI_Recv(&array, current_length / 2, MPI_INT, left_child, SORTED_TAG, MPI_COMM_WORLD, &status);
+        MPI_Recv(&array[current_length / 2], current_length / 2, MPI_INT, right_child, SORTED_TAG, MPI_COMM_WORLD, &status);
+
+        // interleave
+        aux_array = interleaving(array, current_length);
+        memcpy(array, aux_array, ARRAY_SIZE);
+    }
+    else
+    {
+        bs(current_length, array);
     }
 
-    bs(current_length*2, &array[array_pos]);
+    // send to papa
     if(my_rank != 0)
     {
-    	MPI_Send(&array[array_pos], 1, MPI_INT, parent, SORTED_TAG, MPI_COMM_WORLD); // Envia a posição inicial para o primeiro filho
+        MPI_Send(&array, current_length, MPI_INT, parent, SORTED_TAG, MPI_COMM_WORLD);
+    }
+    else
+    {
+        int i;
+        for (i = 0; i < ARRAY_SIZE; ++i)
+            printf("%d ", array[i]);
+        printf("\n");
     }
 
     MPI_Finalize();
+
     return 0;
 }
