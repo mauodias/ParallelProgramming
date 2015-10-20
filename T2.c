@@ -4,7 +4,7 @@
 #include "mpi.h"
 
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE 40      // trabalho final com o valores 10.000, 100.000, 1.000.000
+#define ARRAY_SIZE 80      // trabalho final com o valores 10.000, 100.000, 1.000.000
 #endif
 
 #define ARRAY_TAG 1
@@ -14,9 +14,9 @@
 #define DELTA 10
 #endif
 
-int* array;
-int* aux_array;
-
+int array[ARRAY_SIZE];
+int aux_array[ARRAY_SIZE];
+double t1,t2;
 void init_vector(int rank)
 {
     int i;
@@ -48,12 +48,10 @@ void bs(int n, int * vetor)
     }
 }
 
-int *interleaving(int vetor[], int tam)
+void interleaving(int * vetor, int tam)
 {
-    int *vetor_auxiliar;
-    int i1, i2, i_aux;
-
-    vetor_auxiliar = (int *)malloc(sizeof(int) * tam);
+    int vetor_auxiliar[ARRAY_SIZE];
+    int i1, i, i2, i_aux;
 
     i1 = 0;
     i2 = tam / 2;
@@ -66,7 +64,8 @@ int *interleaving(int vetor[], int tam)
             vetor_auxiliar[i_aux] = vetor[i2++];
     }
 
-    return vetor_auxiliar;
+    for (i = 0; i<tam; i++)
+        array[i] = vetor_auxiliar[i];
 }
 
 int main(int argc, char** argv)
@@ -107,6 +106,7 @@ int main(int argc, char** argv)
         for (i = 0; i < ARRAY_SIZE; ++i)
             printf("%d ", array[i]);
         printf("\n");
+        t1 = MPI_Wtime();
     }
     if (current_length > DELTA)
     {
@@ -119,8 +119,8 @@ int main(int argc, char** argv)
         MPI_Recv(&array[current_length / 2], current_length / 2, MPI_INT, right_child, SORTED_TAG, MPI_COMM_WORLD, &status);
 
         // interleave
-        aux_array = interleaving(array, current_length);
-        memcpy(array, aux_array, ARRAY_SIZE);
+        interleaving(array, current_length);
+        //memcpy(array, aux_array, ARRAY_SIZE);
     }
     else
     {
@@ -134,6 +134,9 @@ int main(int argc, char** argv)
     }
     else
     {
+        interleaving(array, current_length);
+        t2 = MPI_Wtime();
+        printf("\nTempo de execucao: %f\n\n", t2-t1);
         int i;
         for (i = 0; i < ARRAY_SIZE; ++i)
             printf("%d ", array[i]);
