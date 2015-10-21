@@ -4,15 +4,11 @@
 #include "mpi.h"
 
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE 80      // trabalho final com o valores 10.000, 100.000, 1.000.000
+#define ARRAY_SIZE 1000000      // trabalho final com o valores 10.000, 100.000, 1.000.000
 #endif
 
 #define ARRAY_TAG 1
 #define SORTED_TAG 2
-
-#ifndef DELTA
-#define DELTA 10
-#endif
 
 int array[ARRAY_SIZE];
 int aux_array[ARRAY_SIZE];
@@ -75,19 +71,33 @@ int main(int argc, char** argv)
     int current_length = ARRAY_SIZE;
     int array_pos = 0;
     int parent;
+    int delta = ARRAY_SIZE;
 
     MPI_Status status;
     MPI_Init (&argc, & argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &proc_n);
 
+    switch (proc_n){
+        case 3:
+                delta = ARRAY_SIZE * 0.5;
+                break;
+        case 7:
+                delta = ARRAY_SIZE * 0.25;
+                break;
+        case 15:
+                delta = ARRAY_SIZE * 0.125;
+                break;
+        case 31:
+                delta = ARRAY_SIZE * 0.0625;
+                break;
+    }
     init_vector(my_rank);
 
     // Define left and right children
     int left_child = my_rank * 2 + 1;
     int right_child = my_rank * 2 + 2;
 
-    printf("%d", my_rank);
 
     if (my_rank != 0)
     {
@@ -102,13 +112,9 @@ int main(int argc, char** argv)
     }
     else
     {
-        int i;
-        for (i = 0; i < ARRAY_SIZE; ++i)
-            printf("%d ", array[i]);
-        printf("\n");
         t1 = MPI_Wtime();
     }
-    if (current_length > DELTA)
+    if (current_length > delta)
     {
         // Send
         MPI_Send (&array, current_length / 2, MPI_INT, left_child, ARRAY_TAG, MPI_COMM_WORLD);
@@ -137,10 +143,6 @@ int main(int argc, char** argv)
         interleaving(array, current_length);
         t2 = MPI_Wtime();
         printf("\nTempo de execucao: %f\n\n", t2-t1);
-        int i;
-        for (i = 0; i < ARRAY_SIZE; ++i)
-            printf("%d ", array[i]);
-        printf("\n");
     }
 
     MPI_Finalize();
